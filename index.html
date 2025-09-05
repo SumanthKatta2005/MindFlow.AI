@@ -946,7 +946,7 @@
                 const scrollPercent = (scrollTop / docHeight) * 100;
                 progressBar.style.width = scrollPercent + '%';
             });
-            
+
             // Form submission with confetti AND direct Supabase call
 const waitlistForm = document.getElementById('waitlist-form');
 waitlistForm.addEventListener('submit', async function(e) {
@@ -962,11 +962,24 @@ waitlistForm.addEventListener('submit', async function(e) {
     const email = emailInput.value.trim();
     const name = nameInput.value.trim();
 
+    // Basic client-side validation
+    if (!email) {
+        alert('Please enter your email address.');
+        emailInput.focus();
+        return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert('Please enter a valid email address.');
+        emailInput.focus();
+        return;
+    }
+
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Joining...';
     button.disabled = true;
 
     // Initialize Supabase client
-    // ⚠️ REPLACE 'your-project-url' and 'your-anon-key' with your actual Supabase project values ⚠️
+    // ⚠️ REPLACE THESE VALUES WITH YOUR ACTUAL SUPABASE CREDENTIALS ⚠️
     const supabase = window.supabase.createClient(
         'https://dmliabsevfwrisnrsavg.supabase.co', // <-- Your Supabase Project URL
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtbGlhYnNldmZ3cmlzbnJzYXZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MzE5MTUsImV4cCI6MjA3MjQwNzkxNX0.b5RF6RqVbPpZxxjSxDwWp9YqI21pq-Hukr4VIYRC-LM' // <-- Your Supabase Anon (Public) Key
