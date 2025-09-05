@@ -1,0 +1,105 @@
+```javascript
+// waitlist.js
+const { createClient } = require('@supabase/supabase-js');
+
+module.exports = async (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({
+      success: false,
+      message: 'Method not allowed. Only POST requests are accepted.'
+    });
+  }
+
+  try {
+    // Parse JSON body
+    let body;
+    try {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    } catch (parseError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid JSON format'
+      });
+    }
+
+    const { email, name } = body;
+
+    // Validate email
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email'
+      });
+    }
+
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Insert data into waitlist table
+    const { data, error } = await supabase
+      .from('waitlist')
+      .insert([
+        {
+          email: email,
+          name: name || null
+        }
+      ])
+      .select();
+
+    // Handle insertion errors
+    if (error) {
+      // Check for duplicate email
+      if (error.code === '23505') { // PostgreSQL unique violation
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to add to waitlist',
+          error: 'This email is already on the waitlist'
+        });
+      }
+      
+      // Handle other errors
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to add to waitlist',
+        error: error.message
+      });
+    }
+
+    // Success response
+    return res.status(200).json({
+      success: true,
+      message: 'You have been added to the waitlist!'
+    });
+
+  } catch (error) {
+    // Handle unexpected errors
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process request',
+      error: error.message
+    });
+  }
+};
+```
