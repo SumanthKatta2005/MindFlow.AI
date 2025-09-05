@@ -947,33 +947,82 @@
                 progressBar.style.width = scrollPercent + '%';
             });
             
-            // Form submission with confetti
-            const waitlistForm = document.getElementById('waitlist-form');
-            waitlistForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const button = this.querySelector('.cta-button');
-                const originalText = button.innerHTML;
-                
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Joining...';
-                button.disabled = true;
-                
-                // Simulate API call
-                setTimeout(() => {
-                    button.innerHTML = '<i class="fas fa-check"></i> Welcome Aboard!';
-                    button.style.background = 'linear-gradient(135deg, #10B981 0%, #34D399 100%)';
-                    
-                    // Create confetti
-                    createConfetti();
-                    
-                    // Reset after 3 seconds
-                    setTimeout(() => {
-                        button.innerHTML = originalText;
-                        button.style.background = '';
-                        button.disabled = false;
-                        this.reset();
-                    }, 3000);
-                }, 2000);
-            });
+            // Form submission with confetti AND direct Supabase call
+const waitlistForm = document.getElementById('waitlist-form');
+waitlistForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const button = this.querySelector('.cta-button');
+    const originalText = button.innerHTML;
+
+    // Get form data
+    const emailInput = this.querySelector('input[type="email"]');
+    const nameInput = this.querySelector('input[type="text"]');
+
+    const email = emailInput.value.trim();
+    const name = nameInput.value.trim();
+
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Joining...';
+    button.disabled = true;
+
+    // Initialize Supabase client
+    // ⚠️ REPLACE 'your-project-url' and 'your-anon-key' with your actual Supabase project values ⚠️
+    const supabase = window.supabase.createClient(
+        'https://dmliabsevfwrisnrsavg.supabase.co', // <-- Your Supabase Project URL
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtbGlhYnNldmZ3cmlzbnJzYXZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MzE5MTUsImV4cCI6MjA3MjQwNzkxNX0.b5RF6RqVbPpZxxjSxDwWp9YqI21pq-Hukr4VIYRC-LM' // <-- Your Supabase Anon (Public) Key
+    );
+
+    try {
+        // Insert data into waitlist table
+        const { data, error } = await supabase
+            .from('waitlist')
+            .insert([
+                {
+                    email: email,
+                    name: name || null
+                }
+            ])
+            .select();
+
+        if (error) {
+            // Handle duplicate email (PostgreSQL unique violation)
+            if (error.code === '23505') {
+                button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Already Joined';
+                button.style.background = 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
+            } else {
+                // Handle other errors
+                button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + (error.message || 'Something went wrong');
+                button.style.background = 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
+            }
+        } else {
+            // Success: Show success message and confetti
+            button.innerHTML = '<i class="fas fa-check"></i> Welcome Aboard!';
+            button.style.background = 'linear-gradient(135deg, #10B981 0%, #34D399 100%)';
+            createConfetti();
+        }
+
+        // Reset button (and form on success) after 3 seconds
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = '';
+            button.disabled = false;
+            if (!error) {
+                this.reset();
+            }
+        }, 3000);
+
+    } catch (error) {
+        // Network error or other unexpected error
+        console.error('Error:', error);
+        button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Network Error';
+        button.style.background = 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = '';
+            button.disabled = false;
+        }, 3000);
+    }
+});
             
             // Confetti function
             function createConfetti() {
